@@ -1,0 +1,59 @@
+//SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+interface IERC20 {
+    function totalSupply() external view returns(uint256);
+    function balanceOf(address account) external view returns (uint256);
+    function transfer(address recipient,uint256 amount) external returns(bool);
+    function allowance(address owner, address spender) external view returns(uint256);
+    function approve(address spender, uint256 amount) external returns(bool);
+    function transferFrom(address sender,address recipient,uint256 amount) external returns(bool);
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event approval(address indexed owner, address indexed spender, uint256 value);
+    
+}
+contract ERC20 is IERC20{
+    uint256 public totalSupply;
+    uint256 private initialSupply;
+    address private owner;
+    string public name ="VAR token";
+    string public symbol ="VAR";
+    uint public decimals = 18;
+    mapping(address=>uint256) public balanceOf;
+    mapping (address=>mapping(address=>uint256)) public allowance;
+    constructor() {
+     totalSupply = 10000000 * 10 ** uint256(decimals);
+     initialSupply = totalSupply;
+     balanceOf[msg.sender] = totalSupply;
+     owner = msg.sender;
+     emit Transfer(address(0), msg.sender, totalSupply); 
+    }
+function transfer(address recipient, uint256 amount) public returns(bool){
+    balanceOf[msg.sender]-= amount;
+    balanceOf[recipient]+= amount;
+    emit Transfer(msg.sender, recipient, amount);
+    return true;
+}
+function approve(address spender,uint256 amount) public returns(bool){
+    allowance[msg.sender][spender] = amount;
+    emit approval((msg.sender), spender, amount);
+    return true;
+}
+function transferFrom(address sender, address recipient, uint256 amount) public returns(bool){
+    allowance[sender][msg.sender] -= amount;
+    balanceOf[sender] -= amount;
+    balanceOf[recipient] += amount;
+    emit Transfer(sender, recipient, amount);
+    return true;
+}
+function mint(uint256 amount) public {
+    balanceOf[msg.sender] += amount;
+    totalSupply += amount;
+    emit Transfer(address(0),msg.sender, amount);
+}
+function burn(uint256 amount) public{
+    balanceOf[msg.sender] -=amount;
+    totalSupply -= amount;
+    emit Transfer(msg.sender,address(0), amount);
+}
+}
+
