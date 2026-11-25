@@ -1,0 +1,45 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.20;
+
+contract DepositWithdraw {
+    address public owner;
+    bool public paused;
+
+    mapping(address => uint256) public balance;
+
+    event Deposit(address from, uint256 amount, uint256 timestamp);
+    event Withdraw(address to, uint256 amount, uint256 timestamp);
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "You are not the owner");
+        _;
+    }
+
+    function pauseDeposits() public onlyOwner {
+        paused = true;
+    }
+
+    function resumeDeposits() public onlyOwner {
+        paused = false;
+    }
+
+    function deposit() public payable {
+        require(!paused, "Deposits are paused");
+        require(msg.value != 0, "amount should be greater than zero");
+        balance[msg.sender] += msg.value;
+        emit Deposit(msg.sender, msg.value, block.timestamp);
+    }
+
+    function withdraw(uint256 amount) public {
+        require(amount > 0, "Amount must be greater than zero");
+        require(balance[msg.sender] >= amount, "Insufficient balance");
+        balance[msg.sender] -= amount;
+        payable(msg.sender).transfer(amount);
+        emit Withdraw(msg.sender, amount, block.timestamp);
+    }
+}
