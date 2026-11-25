@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract Goverance {
+    struct Proposal {
+        uint256 id;
+        string description;
+        uint256 voteCount;
+        uint256 startTime;
+        uint256 endTime;
+        bool executed;
+    }
+
+    address public owner;
+
+    mapping(uint256 => mapping(address => bool)) public hasVoted;
+    mapping(uint256 => Proposal) public proposalData;
+
+    event ProposalCreated(uint256 proposalId, string description);
+    event Voted(uint256 proposalId, address voter);
+    event ProposalExecuted(uint256 proposalId);
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    modifier onlyOwner() {
+        require(owner == msg.sender, "not the owner");
+        _;
+    }
+
+    function createProposal(
+        uint256 _id,
+        string memory _description,
+        uint256 _startTime,
+        uint256 _endTime
+    ) public {
+        require(_startTime < _endTime, "Invalid time");
+        proposalData[_id] = Proposal({
+            id: _id,
+            description: _description,
+            voteCount: 0,
+            startTime: _startTime,
+            endTime: _endTime,
+            executed: false
+        });
+
+        emit ProposalCreated(_id, _description);
+    }
+
+    // votecount =0 or 1
+
+    function vote(uint256 _proposalId) public {
+        require(!hasVoted[_proposalId][msg.sender], "already voted");
+        Proposal storage proposal = proposalData[_proposalId];
+        require(block.timestamp >= proposal.startTime, "voting not started");
+        require(block.timestamp <= proposal.endTime, "Voting ended");
+        proposal.voteCount += 1;
+        hasVoted[_proposalId][msg.sender] = true;
+        emit Voted(_proposalId, msg.sender);
+    }
+
+    function execute(uint256 _proposalId) public onlyOwner {
+        Proposal storage proposal = proposalData[_proposalId];
+        require(block.timestamp > proposal.endTime, "Voting not ended");
+
+        require(proposal.voteCount > 0, "No votes");
+        require(!proposal.executed, "proposal already executed");
+        proposal.executed = true;
+        emit ProposalExecuted(_proposalId);
+    }
+}
