@@ -1,0 +1,86 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+interface IERC20 {
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 value
+    );
+
+    function totalSupply() external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
+    function transfer(address to, uint256 value) external returns (bool);
+    function allowance(
+        address owner,
+        address spender
+    ) external view returns (uint256);
+    function approve(address spender, uint256 value) external returns (bool);
+    function transferFrom(
+        address from,
+        address to,
+        uint256 value
+    ) external returns (bool);
+}
+
+contract Staking {
+    IERC20 public StakeToken;
+    IERC20 public RewardToken;
+    uint256 public constant APR = 10;
+
+    mapping(address => uint256) public stakeBalance;
+    mapping(address => uint256) public stakeTime;
+
+    event Staked(address user, uint256 amount, uint256 time);
+    event Withdraw(
+        address user,
+        address rewardToken,
+        uint256 rewardAmount,
+        uint256 stakeAmount,
+        uint256 time
+    );
+
+    constructor(address stakeToken, address rewardToken) {
+        StakeToken = IERC20(stakeToken);
+        RewardToken = IERC20(rewardToken);
+    }
+
+    function stake(uint256 amount) public {
+        require(amount > 0, "amount must be grater than 0");
+        require(
+            StakeToken.transferFrom(msg.sender, address(this), amount),
+            "Transfer Failed"
+        );
+        stakeBalance[msg.sender] += amount;
+        stakeTime[msg.sender] = block.timestamp;
+        emit Staked(msg.sender, amount, block.timestamp);
+    }
+
+    function rewardCalculation() public view returns (uint256) {
+        uint256 timeElapsed = block.timestamp - stakeTime[msg.sender];
+        uint256 reward = (stakeBalance[msg.sender] * APR * timeElapsed) /
+            (100 * 365 days);
+        return reward;
+    }
+
+    function withdraw(uint256 amount) public {
+        require(stakeBalance[msg.sender] >= amount, "Insufficient stake");
+        uint256 rewardAmount = rewardCalculation();
+        stakeBalance[msg.sender] -= amount;
+        stakeTime[msg.sender] = block.timestamp;
+        require(
+            RewardToken.transfer(msg.sender, rewardAmount),
+            "Transfer Failed"
+        );
+        StakeToken.transfer(msg.sender, amount);
+
+        emit Withdraw(
+            msg.sender,
+            address(RewardToken),
+            rewardAmount,
+            amount,
+            block.timestamp
+        );
+    }
+}
